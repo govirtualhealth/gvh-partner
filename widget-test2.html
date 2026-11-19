@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Widget diagnostic round 2</title>
+<style>body{font-family:monospace;font-size:13px;padding:16px;background:#fff;color:#111}pre{white-space:pre-wrap;word-break:break-word}</style>
+</head>
+<body>
+<h1>Widget diagnostic round 2</h1>
+<pre id="out">waiting...</pre>
+<script src="https://widgets.leadconnectorhq.com/loader.js" data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js" data-widget-id="6afef8f829d5b191ee8855fc" ></script>
+<script>
+(function(){
+  var out = document.getElementById('out');
+  var lines = [];
+  function log(s){ lines.push(s); out.textContent = lines.join('\n'); }
+  function host(){ return document.querySelector('chat-widget'); }
+  function rectOf(el){ var r = el.getBoundingClientRect(); return {w:Math.round(r.width), h:Math.round(r.height), fb:Math.round(innerHeight - r.bottom), fr:Math.round(innerWidth - r.right)}; }
+  function fixedElements(){
+    var acc = [];
+    function walk(root, path){
+      var kids = root.children || [];
+      for (var i = 0; i < kids.length; i++){
+        var k = kids[i];
+        var cs = getComputedStyle(k);
+        var p = path + '>' + k.tagName + (k.id ? '#'+k.id : '') + (k.className && k.className.toString ? '.' + k.className.toString().slice(0,45) : '');
+        if (cs.position === 'fixed' || cs.position === 'absolute'){
+          acc.push({path:p, pos:cs.position, bottom:cs.bottom, right:cs.right, part: k.getAttribute && k.getAttribute('part'), rect: rectOf(k)});
+        }
+        walk(k, p);
+        if (k.shadowRoot) walk(k.shadowRoot, p + '::shadow');
+      }
+    }
+    walk(document.body, 'body');
+    return acc;
+  }
+  function bubble(){
+    var el = host(); if (!el || !el.shadowRoot) return null;
+    return el.shadowRoot.querySelector('#lc_text-widget--btn');
+  }
+  function waitFor(n){
+    var el = host();
+    if (el && el.shadowRoot && bubble()){ setTimeout(run, 2000); return; }
+    if (n > 24){ log('TIMEOUT'); return; }
+    setTimeout(function(){ waitFor(n+1); }, 500);
+  }
+  function run(){
+    var el = host();
+    log('viewport ' + innerWidth + 'x' + innerHeight);
+    log('FIXED CLOSED: ' + JSON.stringify(fixedElements(), null, 1));
+    // 1) does a document-level transform rule even compute on the host?
+    var st = document.createElement('style');
+    st.textContent = 'chat-widget{transform:translateY(-96px) !important}';
+    document.head.appendChild(st);
+    var cs = getComputedStyle(el);
+    log('host computed transform with rule: ' + cs.transform + ' | display: ' + cs.display);
+    var b = bubble(); if (b) log('bubble rect under host-transform: ' + JSON.stringify(rectOf(b)));
+    st.remove();
+    // 2) shadow-injected stylesheet
+    var s2 = document.createElement('style');
+    s2.textContent = '.lc_text-widget--bubble{bottom:96px !important}';
+    el.shadowRoot.appendChild(s2);
+    if (b) log('bubble rect under shadow-style bottom96: ' + JSON.stringify(rectOf(b)));
+    s2.remove();
+    if (b) log('bubble rect after shadow-style removed: ' + JSON.stringify(rectOf(b)));
+    // 3) direct inline style on the bubble
+    if (b){ b.style.setProperty('bottom', '96px', 'important'); log('bubble rect under inline bottom96: ' + JSON.stringify(rectOf(b))); b.style.removeProperty('bottom'); }
+    // 4) open the chat and dump fixed elements again
+    if (b){ b.click(); }
+    setTimeout(function(){
+      log('FIXED OPEN: ' + JSON.stringify(fixedElements(), null, 1));
+      log('DONE');
+      document.title = 'DIAGNOSTIC2 DONE';
+    }, 2500);
+  }
+  waitFor(0);
+})();
+</script>
+</body>
+</html>
