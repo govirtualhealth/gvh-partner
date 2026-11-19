@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>375px tap test</title>
+<style>
+  body{font-family:monospace;font-size:12px;margin:0;padding:10px;background:#081A2E;color:#DCE7F2;min-height:120vh}
+  pre{white-space:pre-wrap;word-break:break-word;background:#fff;color:#111;padding:10px;border-radius:8px}
+  .mobile-bar{display:none}
+  @media (max-width:760px){
+    .mobile-bar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:70;background:#fff;border-top:1px solid #ddd;padding:10px 14px;gap:12px;align-items:center}
+    .mobile-bar .mp{font-size:13px;color:#555;line-height:1.25}
+    .mobile-bar .mp strong{display:block;color:#142D55;font-size:16px}
+    .mobile-bar .btn{flex:1;padding:13px 10px;font-size:15px;background:#D7232C;color:#fff;border:none;border-radius:8px}
+    /* the production rule (sized host) */
+    chat-widget{position:fixed !important;right:0 !important;bottom:60px !important;width:96px !important;height:150px !important;transform:translateY(0) !important}
+  }
+</style>
+</head>
+<body>
+<p>375px tap test: does the bubble open the chat?</p>
+<pre id="out">waiting...</pre>
+<div class="mobile-bar">
+  <div class="mp">Semaglutide<strong>$265/mo flat</strong></div>
+  <button class="btn" id="barBtn">Book a call</button>
+</div>
+<script src="https://widgets.leadconnectorhq.com/loader.js" data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js" data-widget-id="6afef8f829d5b191ee8855fc" ></script>
+<script>
+(function(){
+  var out = document.getElementById('out');
+  var lines = [];
+  function log(s){ lines.push(s); out.textContent = lines.join('\n'); }
+  function host(){ return document.querySelector('chat-widget'); }
+  function bubble(){ var el = host(); return el && el.shadowRoot ? el.shadowRoot.querySelector('#lc_text-widget--btn') : null; }
+  function wrapper(){ var el = host(); return el && el.shadowRoot ? el.shadowRoot.querySelector('#lc_text-widget') : null; }
+  function rectOf(el){ var r = el.getBoundingClientRect(); return {w:Math.round(r.width), h:Math.round(r.height), fb:Math.round(innerHeight - r.bottom), fr:Math.round(innerWidth - r.right), top:Math.round(r.top), left:Math.round(r.left)}; }
+  function state(tag){
+    var el = host(), w = wrapper();
+    var box = el.shadowRoot.querySelector('#lc_text-widget--box');
+    log(tag + ': data-active=' + el.getAttribute('data-active') + ' wrapperCls=' + (w.className||'').slice(0,60) + ' wrapper=' + JSON.stringify(rectOf(w)) + (box ? ' box=' + JSON.stringify(rectOf(box)) : ' box=none'));
+  }
+  function tapBubble(){
+    var b = bubble(); if (!b) return 'no-bubble';
+    var r = b.getBoundingClientRect();
+    var cx = Math.round(r.left + r.width/2), cy = Math.round(r.top + r.height/2);
+    var sr = host().shadowRoot;
+    var hit = sr.elementFromPoint ? sr.elementFromPoint(cx, cy) : null;
+    var docHit = document.elementFromPoint(cx, cy);
+    log('tap point (' + cx + ',' + cy + '): shadowHit=' + (hit ? hit.tagName + '#' + (hit.id||'') + '.' + (hit.className||'').toString().slice(0,30) : 'none') + ' docHit=' + (docHit ? docHit.tagName : 'none'));
+    var target = hit || b;
+    ['pointerdown','mousedown','pointerup','mouseup','click'].forEach(function(t){
+      target.dispatchEvent(new MouseEvent(t, {bubbles:true, composed:true, cancelable:true, clientX:cx, clientY:cy, view:window}));
+    });
+    return 'dispatched on ' + target.tagName;
+  }
+  function waitFor(n){
+    if (bubble()){ setTimeout(run, 2000); return; }
+    if (n > 24){ log('TIMEOUT'); out.textContent = lines.join('\n'); return; }
+    setTimeout(function(){ waitFor(n+1); }, 500);
+  }
+  function run(){
+    log('frame viewport: ' + innerWidth + 'x' + innerHeight);
+    state('PHASE A closed (production rule)');
+    log('PHASE A tap: ' + tapBubble());
+    setTimeout(function(){
+      state('PHASE A after tap');
+      // close if open
+      var b = bubble(); if (b) b.click();
+      setTimeout(function(){
+        state('PHASE A after close-click');
+        // PHASE B: tap again under the same production rule; check the pre-chat form
+        state('PHASE B closed (production rule, second tap)');
+        log('PHASE B tap: ' + tapBubble());
+        setTimeout(function(){
+          state('PHASE B after tap');
+          var el = host();
+          var inputs = el.shadowRoot.querySelectorAll('input, textarea');
+          var vis = 0;
+          inputs.forEach(function(i){ var r = i.getBoundingClientRect(); if (r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= innerHeight) vis++; });
+          log('PHASE B form inputs total=' + inputs.length + ' visible-in-frame=' + vis);
+          log('DONE');
+          document.title = 'TAP TEST DONE';
+        }, 1800);
+      }, 1200);
+    }, 1800);
+  }
+  waitFor(0);
+})();
+</script>
+</body>
+</html>
