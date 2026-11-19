@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Widget diagnostic round 3</title>
+<style>body{font-family:monospace;font-size:13px;padding:16px;background:#fff;color:#111}pre{white-space:pre-wrap;word-break:break-word}</style>
+</head>
+<body>
+<h1>Widget diagnostic round 3</h1>
+<pre id="out">waiting...</pre>
+<script src="https://widgets.leadconnectorhq.com/loader.js" data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js" data-widget-id="6afef8f829d5b191ee8855fc" ></script>
+<script>
+(function(){
+  var out = document.getElementById('out');
+  var lines = [];
+  function log(s){ lines.push(s); out.textContent = lines.join('\n'); }
+  function host(){ return document.querySelector('chat-widget'); }
+  function rectOf(el){ var r = el.getBoundingClientRect(); return {w:Math.round(r.width), h:Math.round(r.height), fb:Math.round(innerHeight - r.bottom), fr:Math.round(innerWidth - r.right)}; }
+  function bubble(){ var el = host(); return el && el.shadowRoot ? el.shadowRoot.querySelector('#lc_text-widget--btn') : null; }
+  function wrapper(){ var el = host(); return el && el.shadowRoot ? el.shadowRoot.querySelector('#lc_text-widget') : null; }
+  function waitFor(n){
+    var el = host();
+    if (el && el.shadowRoot && bubble()){ setTimeout(run, 2000); return; }
+    if (n > 24){ log('TIMEOUT'); return; }
+    setTimeout(function(){ waitFor(n+1); }, 500);
+  }
+  function run(){
+    var el = host(), w = wrapper(), b = bubble();
+    log('viewport ' + innerWidth + 'x' + innerHeight);
+    var wcs = getComputedStyle(w);
+    log('wrapper computed: transform=' + wcs.transform + ' filter=' + wcs.filter + ' willChange=' + wcs.willChange + ' perspective=' + wcs.perspective);
+    log('baseline bubble: ' + JSON.stringify(rectOf(b)) + ' wrapper: ' + JSON.stringify(rectOf(w)));
+    // TEST E: host becomes fixed anchor + containing block
+    var st = document.createElement('style');
+    st.id = 'testE';
+    st.textContent = 'chat-widget{position:fixed !important; right:0 !important; bottom:76px !important; width:0 !important; height:0 !important; transform:translateZ(0) !important;}';
+    document.head.appendChild(st);
+    log('TEST E host-anchor: bubble: ' + JSON.stringify(rectOf(b)) + ' wrapper: ' + JSON.stringify(rectOf(w)));
+    // open the chat under TEST E and measure the panel geometry
+    b.click();
+    setTimeout(function(){
+      log('TEST E OPEN: wrapper: ' + JSON.stringify(rectOf(w)) + ' bubble: ' + JSON.stringify(rectOf(b)));
+      var box = el.shadowRoot.querySelector('#lc_text-widget--box');
+      if (box) log('TEST E OPEN box: ' + JSON.stringify(rectOf(box)));
+      // close again, remove test E
+      b.click();
+      setTimeout(function(){
+        st.remove();
+        log('after removing E: bubble: ' + JSON.stringify(rectOf(b)));
+        // TEST F: shadow-injected style on the wrapper (JS route)
+        var s2 = document.createElement('style');
+        s2.textContent = '#lc_text-widget{bottom:96px !important}';
+        el.shadowRoot.appendChild(s2);
+        log('TEST F shadow wrapper bottom96: bubble: ' + JSON.stringify(rectOf(b)) + ' wrapper: ' + JSON.stringify(rectOf(w)));
+        s2.remove();
+        log('DONE');
+        document.title = 'DIAGNOSTIC3 DONE';
+      }, 1200);
+    }, 2500);
+  }
+  waitFor(0);
+})();
+</script>
+</body>
+</html>
