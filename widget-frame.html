@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>375px frame test</title>
+<style>
+  body{font-family:monospace;font-size:12px;margin:0;padding:10px;background:#081A2E;color:#DCE7F2;min-height:120vh}
+  pre{white-space:pre-wrap;word-break:break-word;background:#fff;color:#111;padding:10px;border-radius:8px}
+  /* exact .mobile-bar rules copied from govirtualhealth.com / partner.govirtualhealth.com */
+  .mobile-bar{display:none}
+  @media (max-width:760px){
+    .mobile-bar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:70;background:#fff;border-top:1px solid #ddd;padding:10px 14px;gap:12px;align-items:center;box-shadow:0 -6px 20px rgba(16,36,59,.08)}
+    .mobile-bar .mp{font-size:13px;color:#555;line-height:1.25}
+    .mobile-bar .mp strong{display:block;color:#142D55;font-size:16px}
+    .mobile-bar .btn{flex:1;padding:13px 10px;font-size:15px;background:#D7232C;color:#fff;border:none;border-radius:8px}
+  }
+  /* the fix, exactly as deployed (main/partner variant) */
+  @media (max-width:760px){
+    chat-widget{position:fixed !important;right:0 !important;bottom:60px !important;width:0 !important;height:0 !important;transform:translateZ(0) !important}
+  }
+</style>
+</head>
+<body>
+<p>375px frame: mobile bar + chat widget + deployed lift rule.</p>
+<pre id="out">waiting...</pre>
+<div class="mobile-bar" id="barPatient">
+  <div class="mp">Semaglutide<strong>$265/mo flat</strong></div>
+  <button class="btn" id="barBtn">Book a call</button>
+</div>
+<script src="https://widgets.leadconnectorhq.com/loader.js" data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js" data-widget-id="6afef8f829d5b191ee8855fc" ></script>
+<script>
+(function(){
+  var out = document.getElementById('out');
+  function host(){ return document.querySelector('chat-widget'); }
+  function bubble(){ var el = host(); return el && el.shadowRoot ? el.shadowRoot.querySelector('#lc_text-widget--btn') : null; }
+  function waitFor(n){
+    if (bubble()){ setTimeout(run, 2000); return; }
+    if (n > 24){ out.textContent = 'TIMEOUT: no bubble'; return; }
+    setTimeout(function(){ waitFor(n+1); }, 500);
+  }
+  function run(){
+    var bar = document.getElementById('barPatient');
+    var btn = document.getElementById('barBtn');
+    var b = bubble();
+    var br = bar.getBoundingClientRect();
+    var bb = b.getBoundingClientRect();
+    var tr = btn.getBoundingClientRect();
+    var clearance = Math.round(br.top - bb.bottom);
+    var lines = [];
+    lines.push('frame viewport: ' + innerWidth + 'x' + innerHeight);
+    lines.push('bar: height=' + Math.round(br.height) + ' topEdgeFromBottom=' + Math.round(innerHeight - br.top));
+    lines.push('bubble: ' + Math.round(bb.width) + 'x' + Math.round(bb.height) + ' fromBottom=' + Math.round(innerHeight - bb.bottom) + ' fromRight=' + Math.round(innerWidth - bb.right));
+    lines.push('CLEARANCE bubble-bottom-edge above bar-top-edge: ' + clearance + 'px');
+    var pts = [
+      ['button center', Math.round(tr.left + tr.width/2), Math.round(tr.top + tr.height/2)],
+      ['button right end', Math.round(tr.right - 12), Math.round(tr.top + tr.height/2)],
+      ['button left end', Math.round(tr.left + 12), Math.round(tr.top + tr.height/2)]
+    ];
+    pts.forEach(function(p){
+      var el = document.elementFromPoint(p[1], p[2]);
+      var name = el ? (el.tagName + (el.id ? '#'+el.id : '') + (el.className && el.className.toString ? '.' + el.className.toString().slice(0,25) : '')) : 'none';
+      lines.push('elementFromPoint ' + p[0] + ' (' + p[1] + ',' + p[2] + '): ' + name + (el === btn || btn.contains(el) ? '  => BUTTON TAPPABLE' : ''));
+    });
+    lines.push(clearance > 0 ? 'RESULT: bubble fully above the bar' : 'RESULT: STILL OVERLAPPING');
+    lines.push('DONE');
+    out.textContent = lines.join('\n');
+    document.title = 'FRAME TEST DONE';
+  }
+  waitFor(0);
+})();
+</script>
+</body>
+</html>
