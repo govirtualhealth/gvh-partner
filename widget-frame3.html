@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>375px stock-widget test</title>
+<style>
+  body{font-family:monospace;font-size:12px;margin:0;padding:10px;background:#081A2E;color:#DCE7F2;min-height:120vh}
+  pre{white-space:pre-wrap;word-break:break-word;background:#fff;color:#111;padding:10px;border-radius:8px}
+  /* exact .mobile-bar rules from govirtualhealth.com AFTER the padding fix */
+  .mobile-bar{display:none}
+  @media (max-width:760px){
+    .mobile-bar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:70;background:#fff;border-top:1px solid #ddd;padding:10px 104px 10px 14px;gap:12px;align-items:center;box-shadow:0 -6px 20px rgba(16,36,59,.08)}
+    .mobile-bar .mp{font-size:13px;color:#555;line-height:1.25}
+    .mobile-bar .mp strong{display:block;color:#142D55;font-size:16px}
+    .mobile-bar .btn{flex:1;padding:13px 10px;font-size:15px;background:#D7232C;color:#fff;border:none;border-radius:8px}
+  }
+  /* NO chat-widget rule anywhere: stock HighLevel widget */
+</style>
+</head>
+<body>
+<p>375px frame: stock widget + padded mobile bar.</p>
+<pre id="out">waiting...</pre>
+<div class="mobile-bar">
+  <div class="mp">Semaglutide<strong>$265/mo flat</strong></div>
+  <button class="btn" id="barBtn">Check eligibility</button>
+</div>
+<script src="https://widgets.leadconnectorhq.com/loader.js" data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js" data-widget-id="6afef8f829d5b191ee8855fc" ></script>
+<script>
+(function(){
+  var out = document.getElementById('out');
+  var lines = [];
+  function log(s){ lines.push(s); out.textContent = lines.join('\n'); }
+  function host(){ return document.querySelector('chat-widget'); }
+  function bubble(){ var el = host(); return el && el.shadowRoot ? el.shadowRoot.querySelector('#lc_text-widget--btn') : null; }
+  function wrapper(){ var el = host(); return el && el.shadowRoot ? el.shadowRoot.querySelector('#lc_text-widget') : null; }
+  function rectOf(el){ var r = el.getBoundingClientRect(); return {w:Math.round(r.width), h:Math.round(r.height), fb:Math.round(innerHeight - r.bottom), fr:Math.round(innerWidth - r.right), top:Math.round(r.top), left:Math.round(r.left), right:Math.round(r.right)}; }
+  function visibleInputs(){
+    var count = 0, names = [];
+    function walk(root){
+      var els = root.querySelectorAll ? root.querySelectorAll('input, textarea') : [];
+      els.forEach(function(i){ var r = i.getBoundingClientRect(); if (r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth){ count++; names.push((i.getAttribute('placeholder') || i.type || 'input')); } });
+      var all = root.querySelectorAll ? root.querySelectorAll('*') : [];
+      all.forEach(function(e){ if (e.shadowRoot) walk(e.shadowRoot); });
+    }
+    walk(document);
+    return {count: count, names: names};
+  }
+  function waitFor(n){
+    if (bubble()){ setTimeout(run, 2000); return; }
+    if (n > 24){ log('TIMEOUT: no bubble'); return; }
+    setTimeout(function(){ waitFor(n+1); }, 500);
+  }
+  function run(){
+    var bar = document.querySelector('.mobile-bar');
+    var btn = document.getElementById('barBtn');
+    var b = bubble();
+    var br = bar.getBoundingClientRect(), tr = btn.getBoundingClientRect(), bb = b.getBoundingClientRect();
+    log('frame viewport: ' + innerWidth + 'x' + innerHeight);
+    log('bar: h=' + Math.round(br.height) + ' | button: left=' + Math.round(tr.left) + ' right=' + Math.round(tr.right) + ' w=' + Math.round(tr.width));
+    log('bubble (stock): ' + JSON.stringify(rectOf(b)));
+    log('H-GAP button-right-edge to bubble-left-edge: ' + Math.round(bb.left - tr.right) + 'px');
+    [['button center', Math.round(tr.left + tr.width/2)], ['button right end', Math.round(tr.right - 10)], ['button left end', Math.round(tr.left + 10)]].forEach(function(p){
+      var el = document.elementFromPoint(p[1], Math.round(tr.top + tr.height/2));
+      log('elementFromPoint ' + p[0] + ': ' + (el ? el.tagName + (el.id ? '#'+el.id : '') : 'none') + (el === btn ? ' => BUTTON TAPPABLE' : ''));
+    });
+    // tap the bubble
+    var cx = Math.round(bb.left + bb.width/2), cy = Math.round(bb.top + bb.height/2);
+    var hit = host().shadowRoot.elementFromPoint(cx, cy) || b;
+    ['pointerdown','mousedown','pointerup','mouseup','click'].forEach(function(t){
+      hit.dispatchEvent(new MouseEvent(t, {bubbles:true, composed:true, cancelable:true, clientX:cx, clientY:cy, view:window}));
+    });
+    log('tap dispatched on ' + hit.tagName + ' at (' + cx + ',' + cy + ')');
+    setTimeout(function(){
+      var el = host(), w = wrapper();
+      var wr = rectOf(w);
+      log('after tap: data-active=' + el.getAttribute('data-active') + ' panel=' + JSON.stringify(wr));
+      log('panel fully on-screen horizontally: ' + (wr.left >= 0 && wr.right <= innerWidth ? 'YES' : 'NO'));
+      var vi = visibleInputs();
+      log('visible form inputs in composed tree: ' + vi.count + ' [' + vi.names.join(', ') + ']');
+      log('DONE');
+      document.title = 'STOCK TEST DONE';
+    }, 2200);
+  }
+  waitFor(0);
+})();
+</script>
+</body>
+</html>
